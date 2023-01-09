@@ -227,6 +227,7 @@ win.bind('<KP_Divide>', change_focus_left)
 win.bind('<Control-w>',close_window)
 win.bind('<Control-u>',update_window)
 win.bind('<KP_Enter>',interact_widget)
+win.bind('<Return>',interact_widget)
 win.bind('<b>',manual_bend_count)
 win.bind('<g>',manual_goal_count)
 
