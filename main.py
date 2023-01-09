@@ -1,5 +1,5 @@
 import os
-import secrets
+from secrets import secrets
 
 path = '/home/daikinfbn/Brake_Press_Counter4/'
 
