@@ -13,8 +13,8 @@ while variables[0].split('\n')[0] == 'False':
         variables = variable_file.readlines()
 
     if variables[1].split('\n')[0] == 'True':
-        os.popen('sudo git stash')
-        os.popen('sudo git pull --no-rebase')
+        os.popen('sudo git -C ' + path + ' stash')
+        os.popen('sudo git -C ' + path + ' pull --no-rebase')
         with open(path + 'variables.txt','w') as variable_file:
             variable_file.writelines('False\nFalse')
             
