@@ -6,6 +6,7 @@ from time import strftime
 from datetime import datetime
 import RPi.GPIO as GPIO
 import os
+import secrets
 
 # user defined variables
 change_percents = [75,90] # less than 75 is red 75-90 is yellow and 90 and above is green
@@ -206,8 +207,8 @@ def close_window(event): # close the window
     
     
 def update_window(event):
-    os.popen('sudo git -C ' + path + ' fetch')
-    update_status = os.popen('sudo git -C ' + path + ' status').read()
+    os.popen('sudo git -C ' + path + ' fetch ' + secrets.get('GIT_TOKEN'))
+    update_status = os.popen('sudo git -C ' + path + ' status ' + secrets.get('GIT_TOKEN')).read()
     if update_status.split('\n')[1] != "Your branch is up to date with 'origin/main'.":
         with open(path + 'variables.txt','w') as variable_file:
             variable_file.writelines('False\nTrue')
