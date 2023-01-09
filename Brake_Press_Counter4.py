@@ -206,8 +206,8 @@ def close_window(event): # close the window
     
     
 def update_window(event):
-    os.popen('sudo git fetch')
-    update_status = os.popen('sudo git status').read()
+    os.popen('sudo git -C ' + path + ' fetch')
+    update_status = os.popen('sudo git -C ' + path + ' status').read()
     if update_status.split('\n')[1] != "Your branch is up to date with 'origin/main'.":
         with open(path + 'variables.txt','w') as variable_file:
             variable_file.writelines('False\nTrue')
