@@ -6,7 +6,7 @@ from time import strftime
 from datetime import datetime
 import RPi.GPIO as GPIO
 import os
-import secrets
+from secrets import secrets
 
 # user defined variables
 change_percents = [75,90] # less than 75 is red 75-90 is yellow and 90 and above is green
