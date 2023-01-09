@@ -207,8 +207,8 @@ def close_window(event): # close the window
     
     
 def update_window(event):
-    os.popen('sudo git -C ' + path + ' fetch ' + secrets.get('GIT_TOKEN'))
-    update_status = os.popen('sudo git -C ' + path + ' status ' + secrets.get('GIT_TOKEN')).read()
+    os.popen('sudo git -C ' + path + ' fetch https://DaikinFBN:' + secrets.get('GIT_TOKEN') + '@github.com/DaikinFBN/Brake_Press_Counter4.git')
+    update_status = os.popen('sudo git -C ' + path + ' status https://DaikinFBN:' + secrets.get('GIT_TOKEN') + '@github.com/DaikinFBN/Brake_Press_Counter4.git').read()
     if update_status.split('\n')[1] != "Your branch is up to date with 'origin/main'.":
         with open(path + 'variables.txt','w') as variable_file:
             variable_file.writelines('False\nTrue')
