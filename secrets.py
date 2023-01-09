@@ -1,4 +1,4 @@
 secrets = {
-  'GIT_TOKEN' : ''
+  'GIT_TOKEN' : '',
   'MACHINE_NUMBER' : ''
 }
