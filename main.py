@@ -2,7 +2,7 @@ import os
 
 path = '/home/daikinfbn/Brake_Press_Counter4/'
 
-os.system('sudo chown daikinfbn ' + path)
+os.system('sudo chown daikinfbn ' + path + 'variables.txt')
 
 with open(path + 'variables.txt','r') as variable_file:
     variables = variable_file.readlines()
