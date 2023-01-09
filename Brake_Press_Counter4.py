@@ -15,6 +15,7 @@ auto_reset_times = ['7:00'] # counter resets automatically at these times, first
 shift_times = [['8:00','16:30'],['17:00','21:00']]  # first shift start and end time and then second shift start and end time Currntly second shift auto start is disabled
 count_pin = 11 #IO17 on terminal block
 wait_time = .1 # seconds 
+path = '/home/daikinfbn/Brake_Press_Counter4/' # path to the git folder
 
 # appearance setting
 bgcolors = ['#1e1e1e','#252526','#333333','#37373d'] # background colors
@@ -199,7 +200,7 @@ def test_val(inStr,acttyp,index): #Restricts the entry box to numbers and 4 char
     return True
 
 def close_window(event): # close the window
-    with open('variables.txt','w') as variable_file:
+    with open(path + 'variables.txt','w') as variable_file:
         variable_file.writelines('True\nFalse')
     win.destroy()
     
@@ -208,11 +209,11 @@ def update_window(event):
     os.popen('sudo git fetch')
     update_status = os.popen('sudo git status').read()
     if update_status.split('\n')[1] != "Your branch is up to date with 'origin/main'.":
-        with open('variables.txt','w') as variable_file:
+        with open(path + 'variables.txt','w') as variable_file:
             variable_file.writelines('False\nTrue')
         win.destroy()
     else:
-        with open('variables.txt','w') as variable_file:
+        with open(path + 'variables.txt','w') as variable_file:
             variable_file.writelines('False\nFalse')
         pass
 
@@ -264,7 +265,7 @@ frame_btm.grid_columnconfigure(2,weight=1)
 frame_btm.grid_columnconfigure(3,weight=1)
 
 #Defineing top frame widgets
-img = Image.open("daikin_logo2.PNG")
+img = Image.open(path + "daikin_logo2.PNG")
 resized_image= img.resize((203,43), Image.ANTIALIAS)
 new_image= ImageTk.PhotoImage(resized_image)
 daikin_label = tk.Canvas(frame_top,height=50,width=240,bg=bgcolors[1],highlightbackground=bgcolors[1])
