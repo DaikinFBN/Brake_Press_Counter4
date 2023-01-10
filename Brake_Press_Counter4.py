@@ -1,4 +1,4 @@
-# Version 4.2
+# Version 4.3
 
 import tkinter as tk
 from PIL import ImageTk, Image
