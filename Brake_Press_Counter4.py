@@ -234,8 +234,8 @@ win.bind('<b>',manual_bend_count)
 win.bind('<g>',manual_goal_count)
 
 #configure window grids for frames
-win.attributes('-fullscreen',True)
-#win.geometry("1360x768")
+#win.attributes('-fullscreen',True)
+win.geometry("1360x768")
 win_height = win.winfo_screenheight()
 win_width = win.winfo_screenwidth()
 win.grid_columnconfigure(0,weight=1)
