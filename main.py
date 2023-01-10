@@ -15,7 +15,7 @@ while variables[0].split('\n')[0] == 'False':
         variables = variable_file.readlines()
 
     if variables[1].split('\n')[0] == 'True':
-        os.system('sudo git -C ' + path + ' stash')
+        os.system('sudo git -C ' + path + ' reset --hard origin/main')
         os.system('sudo git -C ' + path + ' pull https://DaikinFBN:' + secrets.get('GIT_TOKEN') + '@github.com/DaikinFBN/Brake_Press_Counter4.git --no-rebase')
         os.system('sudo chown daikinfbn ' + path + 'variables.txt')
         with open(path + 'variables.txt','w') as variable_file:
