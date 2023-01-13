@@ -425,7 +425,8 @@ class CounterDisplay:
 
 
     def open_settings(self,event):
-        Settings()
+        # Settings()
+        pass
 
 class Settings:
     def __init__(self):
