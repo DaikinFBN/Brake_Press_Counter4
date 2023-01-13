@@ -411,12 +411,12 @@ class CounterDisplay:
     def update_window(self):
         print('good')
         # TODO uncomment
-        # os.popen('sudo git -C ' + path + ' fetch https://DaikinFBN:' + secrets.secrets.get('GIT_TOKEN') + '@github.com/DaikinFBN/Brake_Press_Counter4.git')
-        # update_status = os.popen('sudo git -C ' + path + ' status https://DaikinFBN:' + secrets.secrets.get('GIT_TOKEN') + '@github.com/DaikinFBN/Brake_Press_Counter4.git').read()
-        # if update_status.split('\n')[1] != "Your branch is up to date with 'origin/main'." or re.split(r'\s+',update_status)[6] != "ahead":
-#             write_txt([2,17,18],['True','self.bend_count.cget('text')','self.shift_goal.cget('text')'])
+        os.popen('sudo git -C ' + path + ' fetch https://DaikinFBN:' + secrets.secrets.get('GIT_TOKEN') + '@github.com/DaikinFBN/Brake_Press_Counter4.git')
+        update_status = os.popen('sudo git -C ' + path + ' status https://DaikinFBN:' + secrets.secrets.get('GIT_TOKEN') + '@github.com/DaikinFBN/Brake_Press_Counter4.git').read()
+        if update_status.split('\n')[1] != "Your branch is up to date with 'origin/main'." or re.split(r'\s+',update_status)[6] != "ahead":
+            write_txt([2,17,18],['True','self.bend_count.cget('text')','self.shift_goal.cget('text')'])
         # TODO 
-        #     self.win.destroy()
+            self.win.destroy()
 
 
 
@@ -431,7 +431,6 @@ class Settings:
         self.win = tk.Toplevel(bg = bgcolors[0])
         self.win.geometry("1000x500")
 
-        # TODO uncomment
 
         self.win.bind('<KP_Multiply>', self.change_focus_right)
         self.win.bind('<KP_Divide>', self.change_focus_left)
