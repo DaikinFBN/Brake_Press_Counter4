@@ -264,7 +264,8 @@ class CounterDisplay:
             self.bend_count['text'] = str(self.past_values[self.past_index][0])
 
         if self.frame_btm.focus_get() == self.settingsbtn:
-            Settings()
+            # Settings()
+            pass
                 
     def change_color(self,fg,bg):
         if self.bend_count['bg'] == bg:
