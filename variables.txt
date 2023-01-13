@@ -34,3 +34,6 @@ shift2_lunch_length: 30
 shift2_break2_start: 22:00
 shift2_break2_length: 10
 second_end: 00:30
+
+
+update
