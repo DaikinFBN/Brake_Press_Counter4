@@ -1,25 +1,24 @@
 import os
-from secrets import secrets
+import Brake_Press_Counter4 as bpc
+import secrets
+import RPi.GPIO as GPIO
 
-path = '/home/daikinfbn/Brake_Press_Counter4/'
+
 
 os.system('sudo chown daikinfbn ' + path + 'variables.txt')
-with open(path + 'variables.txt','r') as variable_file:
-    variables = variable_file.readlines()
 
-while variables[0].split('\n')[0] == 'False':
+while bpc.read_txt([1])[0] == 'False':
 
-    os.system('python ' + path + 'Brake_Press_Counter4.py')
+    bpc.CounterDisplay()
 
-    with open(path + 'variables.txt','r') as variable_file:
-        variables = variable_file.readlines()
+    if bpc.read_txt([2])[0] == 'True':
 
-    if variables[1].split('\n')[0] == 'True':
         os.system('sudo git -C ' + path + ' stash')
         os.system('sudo git -C ' + path + ' pull https://DaikinFBN:' + secrets.get('GIT_TOKEN') + '@github.com/DaikinFBN/Brake_Press_Counter4.git --no-rebase')
         os.system('sudo chown daikinfbn ' + path + 'variables.txt')
-        with open(path + 'variables.txt','w') as variable_file:
-            variable_file.writelines('False\nFalse')
-            
-with open( path + 'variables.txt','w') as variable_file:
-    variable_file.writelines('False\nFalse')
+
+        bpc.write_txt([2],['False'])
+
+bpc.write_txt([1],['False'])
+
+GPIO.cleanup()
