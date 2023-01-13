@@ -414,7 +414,7 @@ class CounterDisplay:
         os.popen('sudo git -C ' + path + ' fetch https://DaikinFBN:' + secrets.secrets.get('GIT_TOKEN') + '@github.com/DaikinFBN/Brake_Press_Counter4.git')
         update_status = os.popen('sudo git -C ' + path + ' status https://DaikinFBN:' + secrets.secrets.get('GIT_TOKEN') + '@github.com/DaikinFBN/Brake_Press_Counter4.git').read()
         if update_status.split('\n')[1] != "Your branch is up to date with 'origin/main'." or re.split(r'\s+',update_status)[6] != "ahead":
-            write_txt([2,17,18],['True','self.bend_count.cget('text')','self.shift_goal.cget('text')'])
+            write_txt([2,17,18],['True',str(self.bend_count.cget('text')),str(self.shift_goal.cget('text'))])
         # TODO 
             self.win.destroy()
 
