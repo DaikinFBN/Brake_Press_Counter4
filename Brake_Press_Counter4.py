@@ -137,7 +137,7 @@ class CounterDisplay:
         self.frame_btm.grid_columnconfigure(4,weight=1)
 
         #Defineing top frame widgets
-        img = Image.open("daikin_logo2.png")
+        img = Image.open(path + "daikin_logo2.png")
         resized_image= img.resize((306,66), Image.ANTIALIAS)
         new_image= ImageTk.PhotoImage(resized_image)
         daikin_label = tk.Canvas(self.frame_top,height=70,width=240,bg=bgcolors[1],highlightbackground=bgcolors[1])
