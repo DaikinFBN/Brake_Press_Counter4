@@ -18,7 +18,7 @@ wait_time = .1 # seconds
 path = '/home/daikinfbn/Brake_Press_Counter4/'
 
 def write_txt(lines,strings):
-    with open('variables.txt','r') as variable_file:
+    with open(path + 'variables.txt','r') as variable_file:
         file_data = variable_file.readlines()
     for i,line in enumerate(lines):
         # if strings[i][0] == '0':
@@ -28,7 +28,7 @@ def write_txt(lines,strings):
       variable_file.writelines(file_data)
 
 def read_txt(lines):
-   with open('variables.txt','r') as variable_file:
+   with open(path + 'variables.txt','r') as variable_file:
       file_data = variable_file.readlines()
       data = []
       for line in lines:
