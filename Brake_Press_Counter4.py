@@ -189,7 +189,8 @@ class CounterDisplay:
             self.shift_goal['text'] = variables_data[2]
             write_txt([2,17,18],['False','0','0'])
             variables_data[20] ='False'
-
+        print(read_txt([2,17,18]))
+        
         self.mainloop()
         self.win.mainloop()
 
