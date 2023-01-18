@@ -422,9 +422,9 @@ class CounterDisplay:
         if re.split(r'\s+',update_status)[6] == 'up':
             print('no update')
             pass
-        elif re.split(r'\s+',update_status)[6] == 'ahead':
-            print('no update')
-            pass
+        # elif re.split(r'\s+',update_status)[6] == 'ahead':
+           # print('no update')
+           # pass
         else:
             print('update')
             write_txt([2,17,18],['True',str(self.bend_count.cget('text')),str(self.shift_goal.cget('text'))])
