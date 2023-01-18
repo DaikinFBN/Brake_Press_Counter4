@@ -243,6 +243,7 @@ class CounterDisplay:
     def close_window(self,event): # close the window
         write_txt([1],['True'])
         self.win.destroy()
+        exit()
 
     def interact_widget(self,event):
         if self.frame_btm.focus_get() == self.input_goal_entry and not self.input_goal_entry.get() == "":
