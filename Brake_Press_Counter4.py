@@ -310,7 +310,7 @@ class CounterDisplay:
         self.time.config(text=strftime('%H:%M:%S'))  #loop clock text
         self.reset_update_counter()
 
-        if self.current_goal.cget("text") != "0": # loop self.efficiency
+        if self.current_goal.cget('text') != "0": # loop self.efficiency
             self.efficiency['text'] = str(round(int(self.bend_count.cget("text")) * 100 / int(self.current_goal.cget('text')))) + '%'
 
         if datetime.now() > shift_times[0][0] and datetime.now() <= shift_times[0][1]:
@@ -428,7 +428,6 @@ class CounterDisplay:
         else:
             print('update')
             write_txt([2,17,18],['True',str(self.bend_count.cget('text')),str(self.shift_goal.cget('text'))])
-            print(read_txt([2,17,18]))
             self.win.destroy()
 
     def open_settings(self,event):
