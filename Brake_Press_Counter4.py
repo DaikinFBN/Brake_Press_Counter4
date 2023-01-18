@@ -185,8 +185,8 @@ class CounterDisplay:
         
         print(read_txt([2,17,18]))
         if read_txt([2])[0] == 'True': # if the counter is update manually during a shift set the previous bend and shift count to the cached values
-            self.bend_count['text'] = variables_data[1]
-            self.shift_goal['text'] = variables_data[2]
+            self.bend_count['text'] = read_txt([17])[0]
+            self.shift_goal['text'] = read_txt([18])[0]
             write_txt([2,17,18],['False','0','0'])
             variables_data[20] ='False'
         print(read_txt([2,17,18]))
