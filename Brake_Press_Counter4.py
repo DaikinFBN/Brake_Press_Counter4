@@ -183,7 +183,7 @@ class CounterDisplay:
         self.settingsbtn = tk.Button(self.frame_btm,text='Settings',font=fonts[2],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[1],activebackground=bgcolors[2],activeforeground=font_color[0])
         self.settingsbtn.grid(row=0,column=4,sticky='nwes')
         
-        print(read_txt([2])[0])
+        print(read_txt([2,17,18]))
         if read_txt([2])[0] == 'True': # if the counter is update manually during a shift set the previous bend and shift count to the cached values
             self.bend_count['text'] = variables_data[1]
             self.shift_goal['text'] = variables_data[2]
@@ -429,6 +429,7 @@ class CounterDisplay:
         else:
             print('update')
             write_txt([2,17,18],['True',str(self.bend_count.cget('text')),str(self.shift_goal.cget('text'))])
+            print(read_txt([2,17,18]))
             self.win.destroy()
 
     def open_settings(self,event):
