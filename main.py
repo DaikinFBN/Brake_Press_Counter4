@@ -23,7 +23,7 @@ while bpc.read_txt([1])[0] == 'False':
     if bpc.read_txt([2])[0] == 'True':
 
         os.system('sudo git -C ' + path + ' stash')
-        os.system('sudo git -C ' + path + ' pull https://DaikinFBN:' + secrets.get('GIT_TOKEN') + '@github.com/DaikinFBN/Brake_Press_Counter4.git --no-rebase')
+        os.system('sudo git -C ' + path + ' pull https://DaikinFBN:' + secrets.secrets.get('GIT_TOKEN') + '@github.com/DaikinFBN/Brake_Press_Counter4.git --no-rebase')
         os.system('sudo chown daikinfbn ' + path + 'variables.txt')
         os.system('sudo chown daikinfbn ' + path + 'settings.txt')
 
