@@ -189,7 +189,7 @@ class CounterDisplay:
             write_txt([2,17,18],['False','0','0'])
             variables_data[20] ='False'
 
-        self.loop()
+        self.mainloop()
         self.win.mainloop()
 
     def test_val(self,inStr,acttyp,index): #Restricts the entry box to numbers and 4 charactures max
@@ -306,7 +306,7 @@ class CounterDisplay:
         else:
             self.prev_loop_time += loop_time
         
-    def loop(self):  # main loop loop
+    def mainloop(self):  # main loop loop
         self.time.config(text=strftime('%H:%M:%S'))  #loop clock text
         self.reset_update_counter()
 
