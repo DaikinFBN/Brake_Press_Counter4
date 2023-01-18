@@ -27,4 +27,4 @@ while bpc.read_txt([1])[0] == 'False':
         os.system('sudo chown daikinfbn ' + path + 'variables.txt')
         os.system('sudo chown daikinfbn ' + path + 'settings.txt')
 
-bpc.write_txt([1],['False'])
+bpc.write_txt([1,2],['False','False'])
