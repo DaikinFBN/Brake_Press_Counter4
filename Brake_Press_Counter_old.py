@@ -1,331 +1,855 @@
-# Version 4.1
-
 import tkinter as tk
 from PIL import ImageTk, Image
 from time import strftime
-from datetime import datetime
-import RPi.GPIO as GPIO
+from datetime import datetime,timedelta
+import secrets
+import re
 import os
-from secrets import secrets
+import RPi.GPIO as GPIO
 
-# user defined variables
-change_percents = [75,90] # less than 75 is red 75-90 is yellow and 90 and above is green
-loop_time = 5 #ms
-blink_time = 500 #ms  must be a multipule of loop_time!
-auto_reset_times = ['7:00'] # counter resets automatically at these times, first time will also reset yesterdays saved values to revent cheating
-shift_times = [['8:00','16:30'],['17:00','21:00']]  # first shift start and end time and then second shift start and end time Currntly second shift auto start is disabled
-count_pin = 11 #IO17 on terminal block
-wait_time = .1 # seconds 
-path = '/home/daikinfbn/Brake_Press_Counter4/' # path to the git folder
-
-# appearance setting
-bgcolors = ['#1e1e1e','#252526','#333333','#37373d'] # background colors
+bgcolors = ['#1a1a1a','#252526','#333333','#37373d'] # background colors
 idcolors = ['red','yellow','green'] # identification colors that change based on the goal
-font_color = ['#ffffff','black']
-fonts = ['Helvetica 36 bold','Helvetica 124 bold','Helvetica 24'] #top text , middle text, bottom text
+font_color = ['#ffffff','black','#ff0000']
+fonts = ['Helvetica 36 bold','Helvetica 92 bold','Helvetica 24','Helvetica 36','Helvetica 30 bold'] #top text , middle text, bottom text
+loop_time = 20 #ms
+blink_time = 500 #ms  must be a multipule of loop_time!
+percent_colors = [75,90]
+wait_time = .1 # seconds 
+path = '/home/daikinfbn/Brake_Press_Counter4/'
 
-# counters
-past_index = 0
-prev_loop_time = 0
-past_values = [[0,0],[0,0],[0,0]] # [bendcount , shift goal]  store a few past values incase of accidental resets
+def write_txt(lines,strings):
+    with open(path + 'variables.txt','r') as variable_file:
+        file_data = variable_file.readlines()
+    for i,line in enumerate(lines):
+        # if strings[i][0] == '0':
+        #     strings[i] = strings[i][1:]
+        file_data[(line-1)] = re.split(r'\s+',file_data[(line-1)])[0] +' '+strings[i]+ '\n'
+    with open('variables.txt','w') as variable_file:
+      variable_file.writelines(file_data)
 
-# used to prevent cheaing and stop signal noise
-risen = True
-fallen = False
-can_count = True
-last_rise = datetime.now()
-last_fall = datetime.now()
-press_time = last_fall - last_rise
+def read_txt(lines):
+   with open(path + 'variables.txt','r') as variable_file:
+      file_data = variable_file.readlines()
+      data = []
+      for line in lines:
+        data.append(re.split(r'\s+',file_data[(line-1)])[1])
+   return data
 
-# redefine shift_time start and end times as datetime object
-shift_times[0][0] = datetime.now().replace(hour=int(shift_times[0][0].split(':')[0]),minute=int(shift_times[0][0].split(':')[1]))
-shift_times[0][1] = datetime.now().replace(hour=int(shift_times[0][1].split(':')[0]),minute=int(shift_times[0][1].split(':')[1]))
-shift_times[1][0] = datetime.now().replace(hour=int(shift_times[1][0].split(':')[0]),minute=int(shift_times[1][0].split(':')[1]))
-shift_times[1][1] = datetime.now().replace(hour=int(shift_times[1][1].split(':')[0]),minute=int(shift_times[1][1].split(':')[1]))
-
-# initalize the RPi GPIO
-GPIO.setmode(GPIO.BOARD)
-GPIO.setup(count_pin,GPIO.IN)
-
-#defining fuctions
-def increase_count(event):
-    global risen,fallen,last_rise,wait_time,last_fall,press_time,can_count#,current_fall,current_rise
+def make_datetime_objects():
+    global variables_data,count_pin,auto_reset_times,shift_times,break_times
+    variables_data = read_txt([(secrets.secrets['MACHINE_NUMBER']+3),17,18,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,2])
+    count_pin = int(variables_data[0])
+    auto_reset_times = []
+    shift_times = [[],[]]
+    break_times = [[[],[],[]],[[],[],[]]]
+    auto_reset_times.insert(0,datetime.now().replace(hour=int(variables_data[3].split(':')[0]),minute=int(variables_data[3].split(':')[1]))-timedelta(minutes=5))
+    auto_reset_times.insert(1,datetime.now().replace(hour=int(variables_data[10].split(':')[0]),minute=int(variables_data[10].split(':')[1]))-timedelta(minutes=1))
+    auto_reset_times.insert(2,datetime.now().replace(hour=int(variables_data[19].split(':')[0]),minute=int(variables_data[19].split(':')[1]))+timedelta(minutes=5))
+    shift_times[0].append(datetime.now().replace(hour=int(variables_data[3].split(':')[0]),minute=int(variables_data[3].split(':')[1])))
+    shift_times[0].append(datetime.now().replace(hour=int(variables_data[10].split(':')[0]),minute=int(variables_data[10].split(':')[1])))
+    shift_times[1].append(datetime.now().replace(hour=int(variables_data[12].split(':')[0]),minute=int(variables_data[12].split(':')[1])))
+    shift_times[1].append(datetime.now().replace(hour=int(variables_data[19].split(':')[0]),minute=int(variables_data[19].split(':')[1])))
+    break_times[0][0].append(datetime.now().replace(hour=int(variables_data[4].split(':')[0]),minute=int(variables_data[4].split(':')[1])))
+    break_times[0][0].append(datetime.now().replace(hour=int(variables_data[4].split(':')[0]),minute=int(variables_data[4].split(':')[1]))+timedelta(minutes=int(variables_data[5])))
+    break_times[0][1].append(datetime.now().replace(hour=int(variables_data[6].split(':')[0]),minute=int(variables_data[6].split(':')[1])))
+    break_times[0][1].append(datetime.now().replace(hour=int(variables_data[6].split(':')[0]),minute=int(variables_data[6].split(':')[1]))+timedelta(minutes=int(variables_data[7])))
+    break_times[0][2].append(datetime.now().replace(hour=int(variables_data[8].split(':')[0]),minute=int(variables_data[8].split(':')[1])))
+    break_times[0][2].append(datetime.now().replace(hour=int(variables_data[8].split(':')[0]),minute=int(variables_data[8].split(':')[1]))+timedelta(minutes=int(variables_data[9])))
+    break_times[1][0].append(datetime.now().replace(hour=int(variables_data[13].split(':')[0]),minute=int(variables_data[13].split(':')[1])))
+    break_times[1][0].append(datetime.now().replace(hour=int(variables_data[13].split(':')[0]),minute=int(variables_data[13].split(':')[1]))+timedelta(minutes=int(variables_data[14])))
+    break_times[1][1].append(datetime.now().replace(hour=int(variables_data[15].split(':')[0]),minute=int(variables_data[15].split(':')[1])))
+    break_times[1][1].append(datetime.now().replace(hour=int(variables_data[15].split(':')[0]),minute=int(variables_data[15].split(':')[1]))+timedelta(minutes=int(variables_data[16])))
+    break_times[1][2].append(datetime.now().replace(hour=int(variables_data[17].split(':')[0]),minute=int(variables_data[17].split(':')[1])))
+    break_times[1][2].append(datetime.now().replace(hour=int(variables_data[17].split(':')[0]),minute=int(variables_data[17].split(':')[1]))+timedelta(minutes=int(variables_data[18])))
+    if shift_times[1][1].hour == 0:
+        shift_times[1][1] += timedelta(days=1)
     
-    if GPIO.input(count_pin) == 0 and fallen == False:
-        fallen = True
-        risen = False
-        can_count = True
-        last_fall = datetime.now()
-        
-    if  GPIO.input(count_pin) == 1 and risen == False:
-        risen = True
-        fallen = False
-        last_rise = datetime.now()
-        press_time =  (last_fall - last_rise) * -1
+
+make_datetime_objects()
+
+class CounterDisplay:
+    global blink_time,loop_time,percent_colors,wait_time,path
+    def __init__(self):
+        self.already_reset = False
+        self.past_index = 0
+        self.prev_loop_time = 0
+        self.past_values = [[0,0],[0,0],[0,0]] # [bendcount , shift goal]  store a few past values incase of accidental resets
+        self.risen = True
+        self.fallen = False
+        self.can_count = True
+        self.last_rise = datetime.now()
+        self.last_fall = datetime.now()
+        self.press_time = self.last_fall - self.last_rise
+        GPIO.setmode(GPIO.BOARD)
+        GPIO.setup(count_pin,GPIO.IN)
+        GPIO.add_event_detect(count_pin, GPIO.BOTH, callback=self.increase_count)
+
+
+        self.win = tk.Tk() 
+
+
+        self.win.bind('<KP_Multiply>', self.change_focus_right)
+        self.win.bind('<KP_Divide>', self.change_focus_left)
+        self.win.bind('<KP_Subtract>',self.update_window)
+        self.win.bind('<KP_Enter>',self.interact_widget)
+
+#         self.win.bind('<*>', self.change_focus_right)
+#         self.win.bind('</>', self.change_focus_left)
+#         self.win.bind('<minus>', self.change_focus_left)
+
+
+        self.win.bind('<Control-w>',self.close_window)
+        self.win.bind('<Control-u>',self.update_window)
+        self.win.bind('<Return>',self.interact_widget)
+        self.win.bind('<b>',self.manual_bend_count)
+        self.win.bind('<g>',self.manual_goal_count)
+        self.win.bind('<o>',self.open_settings)
+
+        # self.win.geometry("1000x500")
+        self.win.attributes('-fullscreen',True)
+        self.win.grid_columnconfigure(0,weight=1)
+        self.win.grid_rowconfigure(0,weight=1)
+        self.win.grid_rowconfigure(1,weight=10)
+        self.win.grid_rowconfigure(2,weight=1)
+
+        self.frame_top = tk.Frame(self.win,bg = bgcolors[1])
+        self.frame_top.grid(row=0,column=0,sticky='nesw')
+        self.frame_top.grid_columnconfigure(0,weight=1)
+        self.frame_top.grid_columnconfigure(1,weight=2)
+        self.frame_top.grid_columnconfigure(2,weight=1)
+        self.frame_top.grid_rowconfigure(0,weight=1)
+
+        self.frame_mid = tk.Frame(self.win,bg = bgcolors[0])
+        self.frame_mid.grid(row=1,column=0,sticky='nesw')
+        self.frame_mid.grid_rowconfigure(0,weight=1)
+        self.frame_mid.grid_rowconfigure(1,weight=1)
+        self.frame_mid.grid_rowconfigure(2,weight=1)
+        self.frame_mid.grid_rowconfigure(3,weight=1)
+        self.frame_mid.grid_columnconfigure(0,weight=1)
+        self.frame_mid.grid_columnconfigure(1,weight=2)
+
+        self.frame_btm = tk.Frame(self.win,bg = bgcolors[1])
+        self.frame_btm.grid(row=2,column=0,sticky='nesw')
+        self.frame_btm.grid_rowconfigure(0,weight=1)
+        self.frame_btm.grid_columnconfigure(0,weight=1)
+        self.frame_btm.grid_columnconfigure(1,weight=1)
+        self.frame_btm.grid_columnconfigure(2,weight=1)
+        self.frame_btm.grid_columnconfigure(3,weight=1)
+        self.frame_btm.grid_columnconfigure(4,weight=1)
+
+        #Defineing top frame widgets
+        img = Image.open(path + "daikin_logo2.PNG")
+        resized_image= img.resize((306,66), Image.ANTIALIAS)
+        new_image= ImageTk.PhotoImage(resized_image)
+        daikin_label = tk.Canvas(self.frame_top,height=70,width=240,bg=bgcolors[1],highlightbackground=bgcolors[1])
+        daikin_label.grid(row=0,column=0,sticky='nswe')
+        daikin_label.create_image(10,30,anchor=tk.W,image=new_image)
+        machine = tk.Label(self.frame_top,text='EPE '+str(secrets.secrets['MACHINE_NUMBER']),font=fonts[0],fg=font_color[0],bg=bgcolors[1])
+        machine.grid(row=0,column=1,sticky='news')
+        self.time = tk.Label(self.frame_top,text='',font=fonts[0],fg=font_color[0],bg=bgcolors[1])
+        self.time.grid(row=0,column=2,sticky='nes')
+
+        #defining middle frame widgets
+        bend_count_label = tk.Label(self.frame_mid,text='Bend Count',font=fonts[1],fg=font_color[0],bg=bgcolors[0],borderwidth=0)
+        bend_count_label.grid(row=0,column=0,sticky='nsw')
+        current_goal_label = tk.Label(self.frame_mid,text='Goal',font=fonts[1],fg=font_color[0],bg=bgcolors[0],borderwidth=0)
+        current_goal_label.grid(row=1,column=0,sticky='nsw')
+        shift_goal_label = tk.Label(self.frame_mid,text='Shift Goal',font=fonts[1],fg=font_color[0],bg=bgcolors[0],borderwidth=0)
+        shift_goal_label.grid(row=2,column=0,sticky='nsw')
+        efficiency_label = tk.Label(self.frame_mid,text='Efficiency',font=fonts[1],fg=font_color[0],bg=bgcolors[0],borderwidth=0)
+        efficiency_label.grid(row=3,column=0,sticky='nsw')
+        self.bend_count = tk.Label(self.frame_mid,text='0',font=fonts[1],fg=font_color[0],bg=bgcolors[0],highlightthickness=5 ,highlightbackground=bgcolors[0])
+        self.bend_count.grid(row=0,column=1,sticky='news')
+        self.current_goal= tk.Label(self.frame_mid,text='0',font=fonts[1],fg=font_color[0],bg=bgcolors[0],highlightthickness=5 ,highlightbackground=bgcolors[0])
+        self.current_goal.grid(row=1,column=1,sticky='nwes')
+        self.shift_goal = tk.Label(self.frame_mid,text='0',font=fonts[1],fg=font_color[0],bg=bgcolors[0],highlightthickness=5 ,highlightbackground=bgcolors[0])
+        self.shift_goal.grid(row=2,column=1,sticky='nwes')
+        self.efficiency = tk.Label(self.frame_mid,text='0%',font=fonts[1],fg=font_color[0],bg=bgcolors[0],highlightthickness=5 ,highlightbackground=bgcolors[0])
+        self.efficiency.grid(row=3,column=1,sticky='nwes')
+
+        #define bottom frame widgets
+        input_goal_label = tk.Label(self.frame_btm,text='Input Goal',font=fonts[2],fg=font_color[0],bg=bgcolors[1],highlightbackground=bgcolors[1])
+        input_goal_label.grid(row=0,column=0,sticky='nwes')
+        self.input_goal_entry = tk.Entry(self.frame_btm,validate="key",font=fonts[2],fg=font_color[0],bg=bgcolors[3],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
+        self.input_goal_entry['validatecommand'] = (self.input_goal_entry.register(self.test_val),'%P','%d','%i')
+        self.input_goal_entry.grid(row=0,column=1,sticky='nwes')
+        self.input_goal_entry.focus_set()
+        self.resetbtn = tk.Button(self.frame_btm,text='Reset',font=fonts[2],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[1],activebackground=bgcolors[2],activeforeground=font_color[0])
+        self.resetbtn.grid(row=0,column=2,sticky='nwes')
+        self.undobtn = tk.Button(self.frame_btm,text='Undo',font=fonts[2],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[1],activebackground=bgcolors[2],activeforeground=font_color[0])
+        self.undobtn.grid(row=0,column=3,sticky='nwes')
+        self.settingsbtn = tk.Button(self.frame_btm,text='Settings',font=fonts[2],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[1],activebackground=bgcolors[2],activeforeground=font_color[0])
+        self.settingsbtn.grid(row=0,column=4,sticky='nwes')
+
+        if variables_data[20] == 'True':
+            self.bend_count['text'] = variables_data[1]
+            self.shift_goal['text'] = variables_data[2]
+            write_txt([2,17,18],['False','0','0'])
+
+        self.loop()
+        self.win.mainloop()
+
+    def test_val(self,inStr,acttyp,index): #Restricts the entry box to numbers and 4 charactures max
+        if acttyp == '1': #insert
+            if not inStr.isdigit() or int(index) >3 or inStr == '0'or len(inStr) > 4:
+                return False
+        return True
+
+    def change_focus_right(self,event):
+        event.widget.tk_focusNext().focus()
+
+        if self.frame_btm.focus_get() == self.input_goal_entry:
+            self.input_goal_entry['bg'] = bgcolors[3]
+            self.settingsbtn['bg'] = bgcolors[1]
+
+        if self.frame_btm.focus_get() == self.resetbtn:
+            self.resetbtn['bg'] = bgcolors[3]
+            self.input_goal_entry['bg'] = bgcolors[1]
+
+        if self.frame_btm.focus_get() == self.undobtn:
+            self.undobtn['bg'] = bgcolors[3]
+            self.resetbtn['bg'] = bgcolors[1]
+
+        if self.frame_btm.focus_get() == self.settingsbtn:
+            self.settingsbtn['bg'] = bgcolors[3]
+            self.undobtn['bg'] = bgcolors[1]
+
+        return("break")
+
+    def change_focus_left(self,event):
+        event.widget.tk_focusPrev().focus()
+
+        if self.frame_btm.focus_get() == self.input_goal_entry:
+            self.input_goal_entry['bg'] = bgcolors[3]
+            self.resetbtn['bg'] = bgcolors[1]
+
+        if self.frame_btm.focus_get() == self.resetbtn:
+            self.resetbtn['bg'] = bgcolors[3]
+            self.undobtn['bg'] = bgcolors[1]
+
+        if self.frame_btm.focus_get() == self.undobtn:
+            self.undobtn['bg'] = bgcolors[3]
+            self.settingsbtn['bg'] = bgcolors[1]
+
+        if self.frame_btm.focus_get() == self.settingsbtn:
+            self.settingsbtn['bg'] = bgcolors[3]
+            self.input_goal_entry['bg'] = bgcolors[1]
+
+        return("break")
     
-    if press_time.total_seconds() > wait_time and fallen == False and can_count == True:
-        can_count = False
-        count = int(bend_count.cget('text'))
-        count += 1
-        bend_count['text'] = str(count)
+    def close_window(self,event): # close the window
+        write_txt([1],['True'])
+        self.win.destroy()
 
-def interact_widget(event):
-    global past_index
-    if frame_btm.focus_get() == input_goal_entry and not input_goal_entry.get() == "":
-        shift_goal['text'] = input_goal_entry.get()
-        input_goal_entry.delete(0, tk.END)
+    def interact_widget(self,event):
+        if self.frame_btm.focus_get() == self.input_goal_entry and not self.input_goal_entry.get() == "":
+            self.shift_goal['text'] = self.input_goal_entry.get()
+            self.input_goal_entry.delete(0, tk.END)
 
-    if frame_btm.focus_get() == resetbtn and not shift_goal.cget("text") == "0":
-        past_values.append([int(bend_count.cget("text")),int(shift_goal.cget("text"))])
-        past_values.pop(0)
-        shift_goal['text'] = "0"
-        bend_count['text'] = "0"
-        input_goal_entry.focus_set()
-        input_goal_entry['bg'] = bgcolors[3]
-        resetbtn['bg'] = bgcolors[1]
+        if self.frame_btm.focus_get() == self.resetbtn and not self.shift_goal.cget("text") == "0":
+            self.past_values.append([int(self.bend_count.cget("text")),int(self.shift_goal.cget("text"))])
+            self.past_values.pop(0)
+            self.shift_goal['text'] = "0"
+            self.bend_count['text'] = "0"
+            self.input_goal_entry.focus_set()
+            self.input_goal_entry['bg'] = bgcolors[3]
+            self.resetbtn['bg'] = bgcolors[1]
 
-    if frame_btm.focus_get() == undobtn:
-        if past_index  == 0:
-            past_index = 2
+        if self.frame_btm.focus_get() == self.undobtn:
+            if self.past_index  == 0:
+                self.past_index = 2
+            else:
+                self.past_index -= 1
+            self.shift_goal['text'] = str(self.past_values[self.past_index][1])
+            self.bend_count['text'] = str(self.past_values[self.past_index][0])
+
+        if self.frame_btm.focus_get() == self.settingsbtn:
+            # Settings()
+            pass
+                
+    def change_color(self,fg,bg):
+        if self.bend_count['bg'] == bg:
+            pass
         else:
-            past_index -= 1
-        shift_goal['text'] = str(past_values[past_index][1])
-        bend_count['text'] = str(past_values[past_index][0])
-             
+            self.bend_count['bg'] = bg
+            self.bend_count['fg'] = fg
+            self.current_goal['bg'] = bg
+            self.current_goal['fg'] = fg
+            self.shift_goal['bg'] = bg
+            self.shift_goal['fg'] = fg
+            self.efficiency['bg'] = bg
+            self.efficiency['fg'] = fg
 
-    
-def loop():  # main update loop
-    global prev_loop_time, blink_time, past_values
-    time.config(text=strftime('%H:%M:%S %p'))  #update clock text
+    def update_color(self):
+        if self.shift_goal.cget("text") == "0" and self.prev_loop_time == blink_time: # blink red
+            self.change_color(font_color[1],idcolors[0])
 
-    if shift_goal.cget("text") == "0" and prev_loop_time == blink_time: # blink red
-        change_color(font_color[1],idcolors[0])
-    elif shift_goal.cget("text") == "0" and prev_loop_time == (blink_time*2): # blink to background color
-        change_color(font_color[0],bgcolors[0])
-    elif int(bend_count.cget("text")) < (int(current_goal.cget('text'))*(change_percents[0]/100)) and not shift_goal.cget("text") == "0": # change to yellow when bend count is less than goal
-        change_color(font_color[1],idcolors[0]) 
-    elif int(bend_count.cget("text")) >= (int(current_goal.cget('text'))*(change_percents[0]/100)) and int(bend_count.cget("text")) < (int(current_goal.cget('text'))*(change_percents[1]/100)) and not shift_goal.cget("text") == "0": # change to yellow when bend count is less than goal
-        change_color(font_color[1],idcolors[1])      
-    elif int(bend_count.cget("text")) >= (int(current_goal.cget('text'))*(change_percents[1]/100)) and not shift_goal.cget("text") == "0": # change to green when bend count is greater than goal
-        change_color(font_color[1],idcolors[2])
+        elif self.shift_goal.cget("text") == "0" and self.prev_loop_time == (blink_time*2): # blink to background color
+            self.change_color(font_color[0],bgcolors[0])
 
-    if prev_loop_time == 1000: # for the blinking red
-        prev_loop_time = 0
-    else:
-        prev_loop_time += loop_time
+        elif int(self.bend_count.cget("text")) < ((percent_colors[0]/100)*int(self.current_goal.cget('text'))) and not self.shift_goal.cget("text") == "0": # change to red when bend count is less than 75%
+            self.change_color(font_color[1],idcolors[0])
 
-    for t in auto_reset_times: #  times when the bend count and shift goal reset to zero
-        if t == strftime('%H:%M'):
-            shift_goal['text'] = "0"
-            bend_count['text'] = "0"
-  
-    if auto_reset_times[0] == strftime('%H:%M'): # reset past_values to prevent reuse from previous days bend counts
-        past_values = [[0,0],[0,0],[0,0]]
+        elif int(self.bend_count.cget("text")) >= ((percent_colors[0]/100)*int(self.current_goal.cget('text'))) and int(self.bend_count.cget("text")) < ((percent_colors[1]/100)*int(self.current_goal.cget('text'))) and not self.shift_goal.cget("text") == "0":
+            self.change_color(font_color[1],idcolors[1])
 
-    if current_goal.cget("text") != "0": # update efficiency
-        efficiency['text'] = str(round(int(bend_count.cget("text")) * 100 / int(current_goal.cget('text')))) + '%'
+        elif int(self.bend_count.cget("text")) >= ((percent_colors[1]/100)*int(self.current_goal.cget('text'))) and not self.shift_goal.cget("text") == "0": # change to green when bend count is greater than 90%
+            self.change_color(font_color[1],idcolors[2])
+         
 
-    if datetime.now() > shift_times[0][0] and datetime.now() < shift_times[0][1]:  # update current_goal for first shift
-        shift_percent = datetime.now()-shift_times[0][0]
-        shift_total = shift_times[0][1] - shift_times[0][0]
-        current_goal['text'] = str(round((shift_percent / shift_total)*int(shift_goal.cget('text'))))
+        if self.prev_loop_time == 1000: # for the blinking red
+            self.prev_loop_time = 0
+        else:
+            self.prev_loop_time += loop_time
+        
+    def loop(self):  # main loop loop
+        self.time.config(text=strftime('%H:%M:%S'))  #loop clock text
+        self.reset_update_counter()
 
-#    elif datetime.now() > shift_times[1][0] and datetime.now() < shift_times[1][1]: # update current_goal for second shift
-#        shift_percent = datetime.now()-shift_times[1][0]
-#        shift_total = shift_times[1][1] - shift_times[1][0]
-#        current_goal['text'] = str(round((shift_percent / shift_total)*int(shift_goal.cget('text'))))
-    win.after(loop_time,loop)
+        if self.current_goal.cget("text") != "0": # loop self.efficiency
+            self.efficiency['text'] = str(round(int(self.bend_count.cget("text")) * 100 / int(self.current_goal.cget('text')))) + '%'
 
-def manual_bend_count(event):  #manually increase to bend count by one used for testing
-    count = int(bend_count.cget('text'))
-    count += 1
-    bend_count['text'] = str(count)
+        if datetime.now() > shift_times[0][0] and datetime.now() <= shift_times[0][1]:
+            shift_length = ((break_times[0][0][0] - shift_times[0][0]) + 
+                            (break_times[0][1][0]-break_times[0][0][1]) + 
+                            (break_times[0][2][0]-break_times[0][1][1]) + 
+                            (shift_times[0][1] - break_times[0][2][1]))
+            if datetime.now() < break_times[0][0][0] and datetime.now() > shift_times[0][0]:
+                shift_percent = (datetime.now() - shift_times[0][0]) / shift_length
+                self.current_goal['text'] = str(round(shift_percent*int(self.shift_goal.cget('text'))))
+                self.update_color()
+            elif datetime.now() < break_times[0][1][0] and datetime.now() > break_times[0][0][1]:
+                shift_percent = (datetime.now() - break_times[0][0][1] + (break_times[0][0][0] - shift_times[0][0])) / shift_length
+                self.current_goal['text'] = str(round(shift_percent*int(self.shift_goal.cget('text'))))
+                self.update_color()
+            elif datetime.now() < break_times[0][2][0] and datetime.now() > break_times[0][1][1]:
+                shift_percent = (datetime.now() - break_times[0][1][1] + (break_times[0][0][0] - shift_times[0][0]) + (break_times[0][1][0]-break_times[0][0][1])) / shift_length
+                self.current_goal['text'] = str(round(shift_percent*int(self.shift_goal.cget('text'))))
+                self.update_color()
+            elif datetime.now() < shift_times[0][1] and datetime.now() >  break_times[0][2][1]:
+                shift_percent = (datetime.now() - break_times[0][2][1] + (break_times[0][0][0] - shift_times[0][0]) + (break_times[0][1][0]-break_times[0][0][1]) + (break_times[0][2][0]-break_times[0][1][1])) / shift_length
+                self.current_goal['text'] = str(round(shift_percent*int(self.shift_goal.cget('text'))))
+                self.update_color()
 
-def manual_goal_count(event):  #manually increase to goal count by one used for testing
-    count = int(current_goal.cget('text'))
-    count += 1
-    current_goal['text'] = str(count)
-    
-def change_color(fg,bg):
-    if bend_count['bg'] == bg:
+        elif datetime.now() > shift_times[1][0] and datetime.now() <= shift_times[1][1] and variables_data[11] == 'True' :
+            shift_length = ((break_times[1][0][0] - shift_times[1][0]) + 
+                            (break_times[1][1][0]-break_times[1][0][1]) + 
+                            (break_times[1][2][0]-break_times[1][1][1]) + 
+                            (shift_times[1][1] - break_times[1][2][1]))
+            if int(shift_length.days) == -1:
+                shift_length + timedelta(days=1)
+            if datetime.now() < break_times[1][0][0] and datetime.now() > shift_times[1][0]:
+                shift_percent = (datetime.now() - shift_times[1][0]) / shift_length
+                self.current_goal['text'] = str(round(shift_percent*int(self.shift_goal.cget('text'))))
+                self.update_color()
+            elif datetime.now() < break_times[1][1][0] and datetime.now() > break_times[1][0][1]:
+                shift_percent = (datetime.now() - break_times[1][0][1] + (break_times[1][0][0] - shift_times[1][0])) / shift_length
+                self.current_goal['text'] = str(round(shift_percent*int(self.shift_goal.cget('text'))))
+                self.update_color()
+            elif datetime.now() < break_times[1][2][0] and datetime.now() > break_times[1][1][1]:
+                shift_percent = (datetime.now() - break_times[1][1][1] + (break_times[1][0][0] - shift_times[1][0]) + (break_times[1][1][0]-break_times[1][0][1])) / shift_length
+                self.current_goal['text'] = str(round(shift_percent*int(self.shift_goal.cget('text'))))
+                self.update_color()
+            elif datetime.now() < shift_times[1][1] and datetime.now() >  break_times[1][2][1]:
+                shift_percent = (datetime.now() - break_times[1][2][1] + (break_times[1][0][0] - shift_times[1][0]) + (break_times[1][1][0]-break_times[1][0][1]) + (break_times[1][2][0]-break_times[1][1][1])) / shift_length
+                self.current_goal['text'] = str(round(shift_percent*int(self.shift_goal.cget('text'))))
+                self.update_color()
+        
+        else:
+            self.change_color(font_color[0],bgcolors[0])
+
+        self.win.after(loop_time,self.loop)
+
+    # TODO uncomment
+
+    def increase_count(self,event):
+
+        if GPIO.input(count_pin) == 0 and self.fallen == False:
+            self.fallen = True
+            self.risen = False
+            self.can_count = True
+            self.last_fall = datetime.now()
+            
+        if  GPIO.input(count_pin) == 1 and self.risen == False:
+            self.risen = True
+            self.fallen = False
+            self.last_rise = datetime.now()
+            self.press_time =  (self.last_fall - self.last_rise) * -1
+        
+        if self.press_time.total_seconds() > wait_time and self.fallen == False and self.can_count == True:
+            self.can_count = False
+            count = int(self.bend_count.cget('text'))
+            count += 1
+            self.bend_count['text'] = str(count)
+
+    def reset_update_counter(self):
+        #TODO double check auto reset times
+
+        for t in auto_reset_times: #  times when the bend count and shift goal reset to zero
+            if t.hour == datetime.now().hour and t.minute == datetime.now().minute and self.already_reset == False:
+                self.past_values = [[0,0],[0,0],[0,0]]
+                self.already_reset = True
+                self.shift_goal['text'] = "0"
+                self.current_goal['text'] = "0"
+                self.bend_count['text'] = "0"
+                self.efficiency['text'] = '0%'
+                self.update_window()
+                self.win.after(61000,self.can_reset)
+
+    def can_reset(self):
+        self.already_reset = False
+
+    def manual_bend_count(self,event):  #manually increase to bend count by one used for testing
+        count = int(self.bend_count.cget('text'))
+        count += 1
+        self.bend_count['text'] = str(count)
+
+    def manual_goal_count(self,event):  #manually increase to goal count by one used for testing
+        count = int(self.current_goal.cget('text'))
+        count += 1
+        self.current_goal['text'] = str(count)
+
+    # TODO change to rpi update and add the etra ahead commit thing and the update cache
+    def update_window(self):
+        print('good')
+        # TODO uncomment
+        os.popen('sudo git -C ' + path + ' fetch https://DaikinFBN:' + secrets.secrets.get('GIT_TOKEN') + '@github.com/DaikinFBN/Brake_Press_Counter4.git')
+        update_status = os.popen('sudo git -C ' + path + ' status https://DaikinFBN:' + secrets.secrets.get('GIT_TOKEN') + '@github.com/DaikinFBN/Brake_Press_Counter4.git').read()
+        if update_status.split('\n')[1] != "Your branch is up to date with 'origin/main'." or re.split(r'\s+',update_status)[6] != "ahead":
+            write_txt([2,17,18],['True',str(self.bend_count.cget('text')),str(self.shift_goal.cget('text'))])
+        # TODO 
+            self.win.destroy()
+
+
+
+
+
+
+    def open_settings(self,event):
+        # Settings()
         pass
-    else:
-        bend_count['bg'] = bg
-        bend_count['fg'] = fg
-        current_goal['bg'] = bg
-        current_goal['fg'] = fg
-        shift_goal['bg'] = bg
-        shift_goal['fg'] = fg
-        efficiency['bg'] = bg
-        efficiency['fg'] = fg
-    
-def change_focus_right(event):
-    event.widget.tk_focusNext().focus()
 
-    if frame_btm.focus_get() == input_goal_entry:
-        input_goal_entry['bg'] = bgcolors[3]
-        undobtn['bg'] = bgcolors[1]
+class Settings:
+    def __init__(self):
+        self.win = tk.Toplevel(bg = bgcolors[0])
+        self.win.geometry("1000x500")
 
-    if frame_btm.focus_get() == resetbtn:
-        resetbtn['bg'] = bgcolors[3]
-        input_goal_entry['bg'] = bgcolors[1]
 
-    if frame_btm.focus_get() == undobtn:
-        undobtn['bg'] = bgcolors[3]
-        resetbtn['bg'] = bgcolors[1]
+        self.win.bind('<KP_Multiply>', self.change_focus_right)
+        self.win.bind('<KP_Divide>', self.change_focus_left)
 
-    return("break")
+#         self.win.bind('<*>', self.change_focus_right)
+#         self.win.bind('</>', self.change_focus_left)
 
-def change_focus_left(event):
-    event.widget.tk_focusPrev().focus()
 
-    if frame_btm.focus_get() == input_goal_entry:
-        input_goal_entry['bg'] = bgcolors[3]
-        resetbtn['bg'] = bgcolors[1]
+        self.win.bind('<Control-w>',self.close_window)
+        self.win.bind('<Control-s>',self.save_values)
+        self.win.bind('<Return>',self.interact_widget)
 
-    if frame_btm.focus_get() == resetbtn:
-        resetbtn['bg'] = bgcolors[3]
-        undobtn['bg'] = bgcolors[1]
+        #region Define settings frames
+        self.win.grid_columnconfigure(0,weight=1)
+        self.win.grid_rowconfigure(0,weight=1)
+        self.win.grid_rowconfigure(1,weight=120)
+        self.win.grid_rowconfigure(2,weight=1)
 
-    if frame_btm.focus_get() == undobtn:
-        undobtn['bg'] = bgcolors[3]
-        input_goal_entry['bg'] = bgcolors[1]
+        self.frame_top = tk.Frame(self.win,bg = bgcolors[1])
+        self.frame_top.grid(row=0,column=0,sticky='nesw')
+        self.frame_top.grid_columnconfigure(0,weight=1)
+        self.frame_top.grid_columnconfigure(1,weight=2)
+        self.frame_top.grid_columnconfigure(2,weight=1)
+        self.frame_top.grid_rowconfigure(0,weight=1)
 
-    return("break")
+        #region edit shift frames
+        self.shift_frame = tk.Frame(self.win,bg = bgcolors[0],highlightbackground=bgcolors[0],highlightthickness=10,highlightcolor=bgcolors[0])
+        self.shift_frame.grid(row=1,column=0,sticky='nesw')
+        self.shift_frame.grid_rowconfigure(0,weight=6)
+        self.shift_frame.grid_rowconfigure(1,weight=1)
+        self.shift_frame.grid_rowconfigure(2,weight=4)
+        self.shift_frame.grid_rowconfigure(3,weight=3)
+        self.shift_frame.grid_columnconfigure(0,weight=1)
+        self.shift_frame_top = tk.Frame(self.shift_frame,bg = bgcolors[0],highlightbackground=bgcolors[0],highlightthickness=5,highlightcolor=bgcolors[0])
+        self.shift_frame_top.grid(row=0,column=0, sticky='nswe')
+        self.shift_frame_top.grid_rowconfigure(0,weight=1)
+        self.shift_frame_top.grid_rowconfigure(1,weight=1)
+        self.shift_frame_top.grid_rowconfigure(2,weight=1)
+        self.shift_frame_top.grid_columnconfigure(0,weight=1)
+        self.shift_frame_top.grid_columnconfigure(1,weight=1)
+        self.shift_frame_mid = tk.Frame(self.shift_frame,bg = bgcolors[0],highlightbackground=bgcolors[0],highlightthickness=5,highlightcolor=bgcolors[0])
+        self.shift_frame_mid.grid(row=1,column=0, sticky='nswe')
+        self.shift_frame_mid.grid_rowconfigure(0,weight=1)
+        self.shift_frame_mid.grid_columnconfigure(0,weight=1)
+        self.shift_frame_mid.grid_columnconfigure(1,weight=1)
+        self.shift_frame_mid.grid_columnconfigure(2,weight=1)
+        self.shift_frame_btm = tk.Frame(self.shift_frame,bg = bgcolors[0],highlightbackground=bgcolors[0],highlightthickness=5,highlightcolor=bgcolors[0])
+        self.shift_frame_btm.grid(row=2,column=0, sticky='nswe')
+        self.shift_frame_btm.grid_rowconfigure(0,weight=1)
+        self.shift_frame_btm.grid_rowconfigure(1,weight=1)
+        self.shift_frame_btm.grid_columnconfigure(0,weight=1)
+        self.shift_frame_btm.grid_columnconfigure(1,weight=1)
+        #endregion
 
-def test_val(inStr,acttyp,index): #Restricts the entry box to numbers and 4 charactures max
+        #region edit break frames
+        self.break_frame = tk.Frame(self.win,bg = bgcolors[0],highlightbackground=bgcolors[0],highlightthickness=10,highlightcolor=bgcolors[0])
+        self.break_frame.grid_rowconfigure(0,weight=3)
+        self.break_frame.grid_rowconfigure(1,weight=3)
+        self.break_frame.grid_rowconfigure(2,weight=1)
+        self.break_frame.grid_columnconfigure(0,weight=1)
+        self.break_frame_top = tk.Frame(self.break_frame,bg = bgcolors[0],highlightbackground=bgcolors[0],highlightthickness=5,highlightcolor=bgcolors[0])
+        self.break_frame_top.grid(row=0,column=0 ,sticky='nswe')
+        self.break_frame_top.grid_rowconfigure(0,weight=1)
+        self.break_frame_top.grid_rowconfigure(1,weight=1)
+        self.break_frame_top.grid_rowconfigure(2,weight=1)
+        self.break_frame_top.grid_rowconfigure(3,weight=1)
+        self.break_frame_top.grid_columnconfigure(0,weight=2)
+        self.break_frame_top.grid_columnconfigure(1,weight=1)
+        self.break_frame_top.grid_columnconfigure(2,weight=2)
+        self.break_frame_top.grid_columnconfigure(3,weight=1)
+        self.break_frame_btm = tk.Frame(self.break_frame,bg = bgcolors[0],highlightbackground=bgcolors[0],highlightthickness=5,highlightcolor=bgcolors[0])
+        self.break_frame_btm.grid(row=1,column=0, sticky='nswe')
+        self.break_frame_btm.grid_rowconfigure(0,weight=1)
+        self.break_frame_btm.grid_rowconfigure(1,weight=1)
+        self.break_frame_btm.grid_rowconfigure(2,weight=1)
+        self.break_frame_btm.grid_columnconfigure(0,weight=2)
+        self.break_frame_btm.grid_columnconfigure(1,weight=1)
+        self.break_frame_btm.grid_columnconfigure(2,weight=2)
+        self.break_frame_btm.grid_columnconfigure(3,weight=1)
+        #endregion
 
-    if acttyp == '1': #insert
-        if not inStr.isdigit() or int(index) >3:
-            return False
-    return True
+        self.frame_btm = tk.Frame(self.win,bg = bgcolors[1])
+        self.frame_btm.grid(row=2,column=0,sticky='nesw')
+        self.frame_btm.grid_rowconfigure(0,weight=1)
+        self.frame_btm.grid_columnconfigure(0,weight=1)
+        self.frame_btm.grid_columnconfigure(1,weight=1)
+        self.frame_btm.grid_columnconfigure(2,weight=1)
+        #endregion
 
-def close_window(event): # close the window
-    with open(path + 'variables.txt','w') as variable_file:
-        variable_file.writelines('True\nFalse')
-    win.destroy()
-    
-    
-def update_window(event):
-    os.popen('sudo git -C ' + path + ' fetch https://DaikinFBN:' + secrets.get('GIT_TOKEN') + '@github.com/DaikinFBN/Brake_Press_Counter4.git')
-    update_status = os.popen('sudo git -C ' + path + ' status https://DaikinFBN:' + secrets.get('GIT_TOKEN') + '@github.com/DaikinFBN/Brake_Press_Counter4.git').read()
-    if update_status.split('\n')[1] != "Your branch is up to date with 'origin/main'.":
-        with open(path + 'variables.txt','w') as variable_file:
-            variable_file.writelines('False\nTrue')
-        win.destroy()
-    else:
-        with open(path + 'variables.txt','w') as variable_file:
-            variable_file.writelines('False\nFalse')
-        pass
+        #region Defineing top frame widgets
+        img = Image.open(path +"daikin_logo2.PNG")
+        resized_image= img.resize((306,66), Image.ANTIALIAS)
+        new_image= ImageTk.PhotoImage(resized_image)
+        daikin_label = tk.Canvas(self.frame_top,height=20,width=240,bg=bgcolors[1],highlightbackground=bgcolors[1])
+        daikin_label.grid(row=0,column=0,sticky='nswe')
+        daikin_label.create_image(10,30,anchor=tk.W,image=new_image)
+        machine = tk.Label(self.frame_top,text='EPE '+str(secrets.secrets['MACHINE_NUMBER']),font=fonts[0],fg=font_color[0],bg=bgcolors[1])
+        machine.grid(row=0,column=1,sticky='news')
+        self.time = tk.Label(self.frame_top,text='',font=fonts[0],fg=font_color[0],bg=bgcolors[1])
+        self.time.grid(row=0,column=2,sticky='nes')
+        #endregion
 
-#make the gui object
-win = tk.Tk()
+        #region define edit shift widgets
+        self.edit_shift = tk.Label(self.shift_frame_top,text='Edit Shift Times',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        self.edit_shift.grid(row=0,column=0, sticky='nswe')
+        self.edit_break = tk.Label(self.shift_frame_top,text='Edit Break Times',font=fonts[3],fg=font_color[0],bg=bgcolors[0],borderwidth=0)
+        self.edit_break.grid(row=0,column=1, sticky='nswe')
+        first_start = tk.Label(self.shift_frame_top,text='Shift Start',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        first_start.grid(row=1,column=0, sticky='nswe')
+        first_end = tk.Label(self.shift_frame_top,text='Shift End',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        first_end.grid(row=2,column=0,sticky='nswe')
+        self.first_start_entry = tk.Entry(self.shift_frame_top,validate="key",justify=tk.CENTER,font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
+        self.first_start_entry['validatecommand'] = (self.first_start_entry.register(self.test_val4),'%P','%d','%i')
+        self.first_start_entry.insert(0,variables_data[3].split(':')[0]+variables_data[3].split(':')[1])
+        self.first_start_entry.grid(row=1,column=1,sticky='nwes')
+        self.first_end_entry = tk.Entry(self.shift_frame_top,validate="key",justify=tk.CENTER,font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
+        self.first_end_entry['validatecommand'] = (self.first_end_entry.register(self.test_val4),'%P','%d','%i')
+        self.first_end_entry.insert(0,variables_data[10].split(':')[0]+variables_data[10].split(':')[1])
+        self.first_end_entry.grid(row=2,column=1,sticky='nwes')
+        add_second_shift = tk.Label(self.shift_frame_mid,text='Add Second Shift   ',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        add_second_shift.grid(row=0,column=0,sticky='nswe')
+        self.yesbtn = tk.Button(self.shift_frame_mid,text='Yes',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[1],activebackground=bgcolors[2],activeforeground=font_color[0])
+        self.yesbtn.grid(row=0,column=1,sticky='nwes')
+        self.nobtn = tk.Button(self.shift_frame_mid,text='No',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[1],activebackground=bgcolors[2],activeforeground=font_color[0])
+        self.nobtn.grid(row=0,column=2,sticky='nwes')
+        if variables_data[11] == 'True':
+            self.yesbtn['bg'] = bgcolors[3]
+        else:    
+            self.nobtn['bg'] = bgcolors[3]
+            self.shift_frame_btm.grid_forget()
+        second_start = tk.Label(self.shift_frame_btm,text='Shift Start',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        second_start.grid(row=0,column=0,sticky='nswe')
+        second_end = tk.Label(self.shift_frame_btm,text='Shift End',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        second_end.grid(row=1,column=0,sticky='nswe')
+        self.second_start_entry = tk.Entry(self.shift_frame_btm,validate="key",justify=tk.CENTER,font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
+        self.second_start_entry['validatecommand'] = (self.second_start_entry.register(self.test_val4),'%P','%d','%i')
+        self.second_start_entry.insert(0,variables_data[12].split(':')[0]+variables_data[12].split(':')[1])
+        self.second_start_entry.grid(row=0,column=1,sticky='nwes')
+        self.second_end_entry = tk.Entry(self.shift_frame_btm,validate="key",justify=tk.CENTER,font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
+        self.second_end_entry['validatecommand'] = (self.second_end_entry.register(self.test_val40),'%P','%d','%i')
+        self.second_end_entry.insert(0,variables_data[19].split(':')[0]+variables_data[19].split(':')[1])
+        self.second_end_entry.grid(row=1,column=1,sticky='nwes')
+        self.shift_warning_label = tk.Label(self.shift_frame,text=' ',font=fonts[4],fg=font_color[2],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[0],highlightthickness=5)
+        self.shift_warning_label.grid(row=3,column=0, sticky='nswe')
+        #endregion
 
-#key binding
-win.bind('<KP_Multiply>', change_focus_right)
-win.bind('<KP_Divide>', change_focus_left)
-win.bind('<Control-w>',close_window)
-win.bind('<Control-u>',update_window)
-win.bind('<KP_Subtract>',update_window)
-win.bind('<KP_Enter>',interact_widget)
-win.bind('<Return>',interact_widget)
-win.bind('<b>',manual_bend_count)
-win.bind('<g>',manual_goal_count)
+        #region define edit break widgets
+        self.edit_shift = tk.Label(self.break_frame_top,text='Edit Shift Times',font=fonts[3],fg=font_color[0],bg=bgcolors[0],borderwidth=0)
+        self.edit_shift.grid(row=0,column=0,columnspan=2, sticky='nswe')
+        self.edit_break = tk.Label(self.break_frame_top,text='Edit Break Times',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        self.edit_break.grid(row=0,column=2,columnspan=2, sticky='nswe')
+        shift1break1 = tk.Label(self.break_frame_top,text='Break 1 Start',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        shift1break1.grid(row=1,column=0, sticky='nswe')
+        shift1break1length = tk.Label(self.break_frame_top,text='Length',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        shift1break1length.grid(row=1,column=2, sticky='nswe')
+        shift1_lunch = tk.Label(self.break_frame_top,text='Lunch Start',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        shift1_lunch.grid(row=2,column=0, sticky='nswe')
+        shift1_lunch_length = tk.Label(self.break_frame_top,text='Length',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        shift1_lunch_length.grid(row=2,column=2, sticky='nswe')
+        shift1break2 = tk.Label(self.break_frame_top,text='Break 2 Start',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        shift1break2.grid(row=3,column=0,sticky='nswe')
+        shift1break2length = tk.Label(self.break_frame_top,text='Length',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        shift1break2length.grid(row=3,column=2,sticky='nswe')
+        shift2break1 = tk.Label(self.break_frame_btm,text='Break 1 Start',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        shift2break1.grid(row=0,column=0, sticky='nswe')
+        shift2break1length = tk.Label(self.break_frame_btm,text='Length',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        shift2break1length.grid(row=0,column=2, sticky='nswe')
+        shift2_lunch = tk.Label(self.break_frame_btm,text='Lunch Start',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        shift2_lunch.grid(row=1,column=0, sticky='nswe')
+        shift2_lunch_length = tk.Label(self.break_frame_btm,text='Length',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        shift2_lunch_length.grid(row=1,column=2, sticky='nswe')
+        shift2break2 = tk.Label(self.break_frame_btm,text='Break 2 Start',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        shift2break2.grid(row=2,column=0,sticky='nswe')
+        shift2break2length = tk.Label(self.break_frame_btm,text='Length',font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0)
+        shift2break2length.grid(row=2,column=2,sticky='nswe')
+        self.break_warning_label = tk.Label(self.break_frame,text=' ',font=fonts[4],fg=font_color[2],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[0],highlightthickness=5)
+        self.break_warning_label.grid(row=2,column=0, sticky='nswe')
+        self.shift1break1_entry = tk.Entry(self.break_frame_top,validate="key",justify=tk.CENTER,text='test', font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
+        self.shift1break1_entry['validatecommand'] = (self.shift1break1_entry.register(self.test_val4),'%P','%d','%i')
+        self.shift1break1_entry.insert(0,variables_data[4].split(':')[0]+variables_data[4].split(':')[1])
+        self.shift1break1_entry.grid(row=1,column=1,sticky='nwes')
+        self.shift1break1length_entry = tk.Entry(self.break_frame_top,validate="key",justify=tk.CENTER,font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
+        self.shift1break1length_entry['validatecommand'] = (self.shift1break1length_entry.register(self.test_val4),'%P','%d','%i')
+        self.shift1break1length_entry.insert(0,variables_data[5])
+        self.shift1break1length_entry.grid(row=1,column=3,sticky='nwes')
+        self.shift1lunch_entry = tk.Entry(self.break_frame_top,validate="key",justify=tk.CENTER,font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
+        self.shift1lunch_entry['validatecommand'] = (self.shift1lunch_entry.register(self.test_val4),'%P','%d','%i')
+        self.shift1lunch_entry.insert(0,variables_data[6].split(':')[0]+variables_data[6].split(':')[1])
+        self.shift1lunch_entry.grid(row=2,column=1,sticky='nwes')
+        self.shift1lunchlength_entry = tk.Entry(self.break_frame_top,validate="key",justify=tk.CENTER,font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
+        self.shift1lunchlength_entry['validatecommand'] = (self.shift1lunchlength_entry.register(self.test_val4),'%P','%d','%i')
+        self.shift1lunchlength_entry.insert(0,variables_data[7])
+        self.shift1lunchlength_entry.grid(row=2,column=3,sticky='nwes')
+        self.shift1break2_entry = tk.Entry(self.break_frame_top,validate="key",justify=tk.CENTER,font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
+        self.shift1break2_entry['validatecommand'] = (self.shift1break2_entry.register(self.test_val4),'%P','%d','%i')
+        self.shift1break2_entry.insert(0,variables_data[8].split(':')[0]+variables_data[8].split(':')[1])
+        self.shift1break2_entry.grid(row=3,column=1,sticky='nwes')
+        self.shift1break2length_entry = tk.Entry(self.break_frame_top,validate="key",justify=tk.CENTER,font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
+        self.shift1break2length_entry['validatecommand'] = (self.shift1break2length_entry.register(self.test_val4),'%P','%d','%i')
+        self.shift1break2length_entry.insert(0,variables_data[9])
+        self.shift1break2length_entry.grid(row=3,column=3,sticky='nwes')
+        self.shift2break1_entry = tk.Entry(self.break_frame_btm,validate="key",justify=tk.CENTER,font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
+        self.shift2break1_entry['validatecommand'] = (self.shift2break1_entry.register(self.test_val4),'%P','%d','%i')
+        self.shift2break1_entry.insert(0,variables_data[13].split(':')[0]+variables_data[13].split(':')[1])
+        self.shift2break1_entry.grid(row=0,column=1,sticky='nwes')
+        self.shift2break1length_entry = tk.Entry(self.break_frame_btm,validate="key",justify=tk.CENTER,font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
+        self.shift2break1length_entry['validatecommand'] = (self.shift2break1length_entry.register(self.test_val4),'%P','%d','%i')
+        self.shift2break1length_entry.insert(0,variables_data[14])
+        self.shift2break1length_entry.grid(row=0,column=3,sticky='nwes')
+        self.shift2lunch_entry = tk.Entry(self.break_frame_btm,validate="key",justify=tk.CENTER,font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
+        self.shift2lunch_entry['validatecommand'] = (self.shift2lunch_entry.register(self.test_val4),'%P','%d','%i')
+        self.shift2lunch_entry.insert(0,variables_data[15].split(':')[0]+variables_data[15].split(':')[1])
+        self.shift2lunch_entry.grid(row=1,column=1,sticky='nwes')
+        self.shift2lunchlength_entry = tk.Entry(self.break_frame_btm,validate="key",justify=tk.CENTER,font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
+        self.shift2lunchlength_entry['validatecommand'] = (self.shift2lunchlength_entry.register(self.test_val4),'%P','%d','%i')
+        self.shift2lunchlength_entry.insert(0,variables_data[16])
+        self.shift2lunchlength_entry.grid(row=1,column=3,sticky='nwes')
+        self.shift2break2_entry = tk.Entry(self.break_frame_btm,validate="key",justify=tk.CENTER,font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
+        self.shift2break2_entry['validatecommand'] = (self.shift2break2_entry.register(self.test_val4),'%P','%d','%i')
+        self.shift2break2_entry.insert(0,variables_data[17].split(':')[0]+variables_data[17].split(':')[1])
+        self.shift2break2_entry.grid(row=2,column=1,sticky='nwes')
+        self.shift2break2length_entry = tk.Entry(self.break_frame_btm,validate="key",justify=tk.CENTER,font=fonts[3],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
+        self.shift2break2length_entry['validatecommand'] = (self.shift2break2length_entry.register(self.test_val4),'%P','%d','%i')
+        self.shift2break2length_entry.insert(0,variables_data[18])
+        self.shift2break2length_entry.grid(row=2,column=3,sticky='nwes')
+        #endregion
 
-#configure window grids for frames
-win.attributes('-fullscreen',True)
-#win.geometry("1360x768")
-win_height = win.winfo_screenheight()
-win_width = win.winfo_screenwidth()
-win.grid_columnconfigure(0,weight=1)
-win.grid_rowconfigure(0,weight=1)
-win.grid_rowconfigure(1,weight=8)
-win.grid_rowconfigure(2,weight=1)
+        #region define bottom frame widgets
+        self.change_tabbtn = tk.Button(self.frame_btm,text='Edit Break Times',font=fonts[2],fg=font_color[0],bg=bgcolors[3],borderwidth=0,highlightbackground=bgcolors[1],activebackground=bgcolors[2],activeforeground=font_color[0])
+        self.change_tabbtn.grid(row=0,column=0,sticky='nwes')
+        self.change_tabbtn.focus_set()
+        self.savebtn = tk.Button(self.frame_btm,text='Save',font=fonts[2],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[1],activebackground=bgcolors[2],activeforeground=font_color[0])
+        self.savebtn.grid(row=0,column=1,sticky='nwes')
+        self.closebtn = tk.Button(self.frame_btm,text='Close',font=fonts[2],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[1],activebackground=bgcolors[2],activeforeground=font_color[0])
+        self.closebtn.grid(row=0,column=2,sticky='nwes')
+        #endregion
 
-#Make frames
-frame_top = tk.Frame(win,bg = bgcolors[1])
-frame_top.grid(row=0,column=0,sticky='nesw')
-frame_top.grid_columnconfigure(0,weight=1)
-frame_top.grid_columnconfigure(1,weight=2)
-frame_top.grid_columnconfigure(2,weight=1)
-frame_top.grid_rowconfigure(0,weight=1)
+        self.loop()
+        self.win.mainloop()
 
-frame_mid = tk.Frame(win,bg = bgcolors[0])
-frame_mid.grid(row=1,column=0,sticky='nesw')
-frame_mid.grid_rowconfigure(0,weight=1)
-frame_mid.grid_rowconfigure(1,weight=1)
-frame_mid.grid_rowconfigure(2,weight=1)
-frame_mid.grid_rowconfigure(3,weight=1)
-frame_mid.grid_columnconfigure(0,weight=1)
-frame_mid.grid_columnconfigure(1,weight=3)
+    def test_val40(self,inStr,acttyp,index): #Restricts the entry box to numbers and 4 charactures max
+        if acttyp == '1': #insert
+            if not inStr.isdigit() or int(index) >3 or len(inStr) > 4:
+                return False
+        return True
 
-frame_btm = tk.Frame(win,bg = bgcolors[1])
-frame_btm.grid(row=2,column=0,sticky='nesw')
-frame_btm.grid_rowconfigure(0,weight=1)
-frame_btm.grid_columnconfigure(0,weight=1)
-frame_btm.grid_columnconfigure(1,weight=1)
-frame_btm.grid_columnconfigure(2,weight=1)
-frame_btm.grid_columnconfigure(3,weight=1)
+    def test_val4(self,inStr,acttyp,index): #Restricts the entry box to numbers and 4 charactures max and no zeros
+        if acttyp == '1': #insert
+            if not inStr.isdigit() or int(index) >3 or inStr == '0' or len(inStr) > 4:
+                return False
+        return True
 
-#Defineing top frame widgets
-img = Image.open(path + "daikin_logo2.PNG")
-resized_image= img.resize((203,43), Image.ANTIALIAS)
-new_image= ImageTk.PhotoImage(resized_image)
-daikin_label = tk.Canvas(frame_top,height=50,width=240,bg=bgcolors[1],highlightbackground=bgcolors[1])
-daikin_label.grid(row=0,column=0,sticky='nswe')
-daikin_label.create_image(10,25,anchor=tk.W,image=new_image)
+    def test_val2(self,inStr,acttyp,index): #Restricts the entry box to numbers and 2 charactures max and no zeros
+        if acttyp == '1': #insert
+            if not inStr.isdigit() or int(index) >1 or len(inStr) > 2:
+                return False
+        return True
 
-machine = tk.Label(frame_top,text='EPE',font=fonts[0],fg=font_color[0],bg=bgcolors[1])
-machine.grid(row=0,column=1,sticky='news')
+    def change_focus_right(self,event):
+        last_focus = self.shift_frame.focus_get()
+        event.widget.tk_focusNext().focus()
+        current_focus = self.shift_frame.focus_get()
+        current_focus['bg'] = bgcolors[3]
+        if last_focus == self.yesbtn and variables_data[11] == 'True':
+            last_focus['bg'] = bgcolors[3]
+        elif last_focus == self.nobtn and variables_data[11] == 'False':
+            last_focus['bg'] = bgcolors[3]
+        else:    
+            last_focus['bg'] = bgcolors[1]
+        return("break")
 
-time = tk.Label(frame_top,text='',font=fonts[0],fg=font_color[0],bg=bgcolors[1])
-time.grid(row=0,column=2,sticky='nes')
+    def change_focus_left(self,event):
+        last_focus = self.shift_frame.focus_get()
+        event.widget.tk_focusPrev().focus()
+        current_focus = self.shift_frame.focus_get()
+        current_focus['bg'] = bgcolors[3]
+        if last_focus == self.yesbtn and variables_data[11] == 'True':
+            last_focus['bg'] = bgcolors[3]
+        elif last_focus == self.nobtn and variables_data[11] == 'False':
+            last_focus['bg'] = bgcolors[3]
+        else:    
+            last_focus['bg'] = bgcolors[1]
+        return("break")
 
-#defining middle frame widgets
-bend_count_label = tk.Label(frame_mid,text='Bend Count',font=fonts[1],fg=font_color[0],bg=bgcolors[0],borderwidth=0)
-bend_count_label.grid(row=0,column=0,sticky='nsw')
+    def interact_widget(self,event):
+        
+        if self.change_tabbtn['text'] == 'Edit Break Times' and self.frame_btm.focus_get() == self.change_tabbtn:
+            self.change_tabbtn['text'] = 'Edit Shift Times'
+            self.shift_frame.grid_forget()
+            self.break_frame.grid(row=1,column=0,sticky='nesw')
+            if variables_data[11] == 'False':
+                self.break_frame_btm.grid_forget()
+            return
 
-current_goal_label = tk.Label(frame_mid,text='Goal',font=fonts[1],fg=font_color[0],bg=bgcolors[0],borderwidth=0)
-current_goal_label.grid(row=1,column=0,sticky='nsw')
+        if self.change_tabbtn['text'] == 'Edit Shift Times'and self.frame_btm.focus_get() == self.change_tabbtn:
+            self.change_tabbtn['text'] = 'Edit Break Times'
+            self.break_frame.grid_forget()
+            self.shift_frame.grid(row=1,column=0,sticky='nesw')
+            if variables_data[11] == 'False':
+                self.break_frame_btm.grid_forget()
+            return
 
-shift_goal_label = tk.Label(frame_mid,text='Shift Goal',font=fonts[1],fg=font_color[0],bg=bgcolors[0],borderwidth=0)
-shift_goal_label.grid(row=2,column=0,sticky='nsw')
+        if self.frame_btm.focus_get() == self.savebtn:
+            self.save_values(event)
 
-efficiency_label = tk.Label(frame_mid,text='Efficiency',font=fonts[1],fg=font_color[0],bg=bgcolors[0],borderwidth=0)
-efficiency_label.grid(row=3,column=0,sticky='nsw')
+        if self.frame_btm.focus_get() == self.closebtn:
+            self.close_window(event)
 
-bend_count = tk.Label(frame_mid,text='0',font=fonts[1],fg=font_color[0],bg=bgcolors[0],highlightthickness=5 ,highlightbackground=bgcolors[0])
-bend_count.grid(row=0,column=1,sticky='news')
+        if self.shift_frame_mid.focus_get() == self.yesbtn and variables_data[11] == 'False':
+            self.shift_frame_btm.grid(row=2,column=0, sticky='nswe')
+            self.break_frame_btm.grid(row=1,column=0, sticky='nswe')
+            write_txt([28],['True'])
+            variables_data[11] = 'True'
+            self.yesbtn['bg'] = bgcolors[3]
+            self.nobtn['bg'] = bgcolors[1]
 
-current_goal= tk.Label(frame_mid,text='0',font=fonts[1],fg=font_color[0],bg=bgcolors[0],highlightthickness=5 ,highlightbackground=bgcolors[0])
-current_goal.grid(row=1,column=1,sticky='nwes')
+        if self.shift_frame_mid.focus_get() == self.nobtn and variables_data[11] == 'True':
+            self.shift_frame_btm.grid_forget()
+            self.break_frame_btm.grid_forget()
+            write_txt([28],['False'])
+            variables_data[11] = 'False'
+            self.yesbtn['bg'] = bgcolors[1]
+            self.nobtn['bg'] = bgcolors[3]
+            
+    def loop(self):  # main loop loop
+        self.time.config(text=strftime('%H:%M:%S'))  #loop clock text
+        self.win.after(loop_time,self.loop)
 
-shift_goal = tk.Label(frame_mid,text='0',font=fonts[1],fg=font_color[0],bg=bgcolors[0],highlightthickness=5 ,highlightbackground=bgcolors[0])
-shift_goal.grid(row=2,column=1,sticky='nwes')
+    def save_values(self,event):
+        if variables_data[11] == 'True':
+            entry_feilds = [ [self.first_start_entry,4]
+                            ,[self.shift1break1_entry,4]
+                            ,[self.shift1break1length_entry,2]
+                            ,[self.shift1lunch_entry,4]
+                            ,[self.shift1lunchlength_entry,2]
+                            ,[self.shift1break2_entry,4]
+                            ,[self.shift1break2length_entry,2]
+                            ,[self.first_end_entry,4]
+                            ,[self.second_start_entry,4]
+                            ,[self.shift2break1_entry,4]
+                            ,[self.shift2break1length_entry,2]
+                            ,[self.shift2lunch_entry,4]
+                            ,[self.shift2lunchlength_entry,2]
+                            ,[self.shift2break2_entry,4]
+                            ,[self.shift2break2length_entry,2]
+                            ,[self.second_end_entry,4]]
+        else:
+            entry_feilds = [ [self.first_start_entry,4]
+                            ,[self.shift1break1_entry,4]
+                            ,[self.shift1break1length_entry,2]
+                            ,[self.shift1lunch_entry,4]
+                            ,[self.shift1lunchlength_entry,2]
+                            ,[self.shift1break2_entry,4]
+                            ,[self.shift1break2length_entry,2]
+                            ,[self.first_end_entry,4]]           
 
-efficiency = tk.Label(frame_mid,text='0%',font=fonts[1],fg=font_color[0],bg=bgcolors[0],highlightthickness=5 ,highlightbackground=bgcolors[0])
-efficiency.grid(row=3,column=1,sticky='nwes')
+        warning_msg = 'ERROR: '
+        # warning_msg += '\n'
+        for i,entry in enumerate(entry_feilds):
+            entry[0]['highlightthickness'] = 0
+            if entry[1] == 2:
+                if not len(entry[0].get()) >= 1 or not int(entry[0].get()) <= 60:
+                    warning_msg += 'You must input a break lengths and it must less than 60 minutes long\n'
+                    entry[0]['highlightthickness'] = 5
+                    entry[0]['highlightcolor']='red'
+                    entry[0].focus()
+                    break
+            if entry[1] == 4:
+                if  not len(entry[0].get()) >= 3 or int(entry[0].get()) > 2359 or int(entry[0].get()[-2:]) > 59:
+                    warning_msg += 'You must input a value in military time\nIt has to be at least 3 digits long\n'
+                    entry[0]['highlightthickness'] = 5
+                    entry[0]['highlightcolor']='red'
+                    entry[0].focus()
+                    break
 
-#define bottom frame widgets
+            if entry[1] == 2:
+                prev_entry = datetime.now().replace(hour=int(entry_feilds[i-1][0].get()[-4:-2]),minute=int(entry_feilds[i-1][0].get()[-2:]))
+                this_entry = (prev_entry+timedelta(minutes=int(entry[0].get())))
 
-input_goal_label = tk.Label(frame_btm,text='Input Goal',font=fonts[2],fg=font_color[0],bg=bgcolors[1],highlightbackground=bgcolors[1])
-input_goal_label.grid(row=0,column=0,sticky='nwes')
+            elif entry_feilds[i-1][1] == 2:
+                this_entry = datetime.now().replace(hour=int(entry[0].get()[-4:-2]),minute=int(entry[0].get()[-2:]))
+                prev_entry = (datetime.now().replace(hour=int(entry_feilds[i-2][0].get()[-4:-2]),minute=int(entry_feilds[i-2][0].get()[-2:]))+timedelta(minutes=int(entry_feilds[i-1][0].get())))
 
-input_goal_entry = tk.Entry(frame_btm,validate="key",font=fonts[2],fg=font_color[0],bg=bgcolors[3],borderwidth=0,highlightbackground=bgcolors[2],insertbackground=font_color[0])
-input_goal_entry['validatecommand'] = (input_goal_entry.register(test_val),'%P','%d','%i')
-input_goal_entry.grid(row=0,column=1,sticky='nwes')
-input_goal_entry.focus_set()
+            else:
+                prev_entry = datetime.now().replace(hour=int(entry_feilds[i-1][0].get()[-4:-2]),minute=int(entry_feilds[i-1][0].get()[-2:]))
+                this_entry = datetime.now().replace(hour=int(entry[0].get()[-4:-2]),minute=int(entry[0].get()[-2:]))
+            
+            if this_entry.hour >= 0 and entry[0] == self.second_end_entry:
+                this_entry += timedelta(days=1)
 
-resetbtn = tk.Button(frame_btm,text='Reset',font=fonts[2],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[1],activebackground=bgcolors[2],activeforeground=font_color[0])
-resetbtn.grid(row=0,column=2,sticky='nwes')
+            if not this_entry > prev_entry:
+                entry[0]['highlightthickness'] = 5
+                entry[0]['highlightcolor']='red'
+                entry[0].focus()
+                warning_msg += 'Break times must happen within the shift window\nBreak times must not overlap with eachother\nShift times must not overlap'
+                break
 
-undobtn = tk.Button(frame_btm,text='Undo',font=fonts[2],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[1],activebackground=bgcolors[2],activeforeground=font_color[0])
-undobtn.grid(row=0,column=3,sticky='nwes')
+        if warning_msg == 'ERROR: ':
+            warning_msg = 'New Shift and Breaks times saved!'
+            self.shift_warning_label['text'] = warning_msg
+            self.shift_warning_label['fg'] = font_color[0]
+            self.break_warning_label['text'] = warning_msg
+            self.break_warning_label['fg'] = font_color[0]
+            self.new_times = []
+            for entry in entry_feilds:
+                if len(entry[0].get()) <= 2:
+                    self.new_times.append(entry[0].get())
+                else:
+                    self.new_times.append(entry[0].get()[-4:-2]+':'+entry[0].get()[-2:])
+            write_txt([20,21,22,23,24,25,26,27,29,30,31,32,33,34,35,36],self.new_times)
+            make_datetime_objects()
+        else:
+            self.shift_warning_label['text'] = warning_msg
+            self.shift_warning_label['fg'] = font_color[2]
+            self.break_warning_label['text'] = warning_msg
+            self.break_warning_label['fg'] = font_color[2]
 
-# canvas = tk.Frame(width = win_width,height = win_height )
-# canvas.place(height = win_height,width = win_width)
-
-loop()
-GPIO.add_event_detect(count_pin, GPIO.BOTH, callback=increase_count)
-win.mainloop()
-GPIO.cleanup()
+    def close_window(self,event): # close the window
+        self.win.destroy()
