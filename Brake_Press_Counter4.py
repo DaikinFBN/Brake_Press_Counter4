@@ -243,7 +243,7 @@ class CounterDisplay:
     def close_window(self,event): # close the window
         write_txt([1],['True'])
         self.win.destroy()
-        exit()
+        
 
     def interact_widget(self,event):
         if self.frame_btm.focus_get() == self.input_goal_entry and not self.input_goal_entry.get() == "":
@@ -398,7 +398,7 @@ class CounterDisplay:
                 self.current_goal['text'] = "0"
                 self.bend_count['text'] = "0"
                 self.efficiency['text'] = '0%'
-                self.update_window(None)
+                # self.update_window(None)
                 self.win.after(61000,self.can_reset)
 
     def can_reset(self):
