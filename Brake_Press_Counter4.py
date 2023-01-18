@@ -64,7 +64,7 @@ def make_datetime_objects():
     break_times[1][2].append(datetime.now().replace(hour=int(variables_data[17].split(':')[0]),minute=int(variables_data[17].split(':')[1]))+timedelta(minutes=int(variables_data[18])))
     if shift_times[1][1].hour == 0:
         shift_times[1][1] += timedelta(days=1)
-print(variables_data[20])
+
 make_datetime_objects()
 print(variables_data[20])
 class CounterDisplay:
