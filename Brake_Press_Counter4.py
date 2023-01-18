@@ -362,7 +362,7 @@ class CounterDisplay:
         else:
             self.change_color(font_color[0],bgcolors[0])
 
-        self.win.after(loop_time,self.loop)
+        self.win.after(loop_time,self.mainloop)
 
     # TODO uncomment
 
