@@ -1,6 +1,6 @@
 Close: False
 Update: False
-
+EPE_number: 1
 EPE1_countpin: 13
 EPE2_countpin: 11
 EPE3_countpin: 11
@@ -18,7 +18,7 @@ Bend_count_cache: 0
 shift_goal_cache: 0
 
 fisrt_start: 6:00
-shift1_break1_start: 10:00
+shift1_break1_start: 9:00
 shift1_break1_length: 10
 shift1_lunch: 12:00
 shift1_lunch_length: 30
@@ -34,6 +34,3 @@ shift2_lunch_length: 30
 shift2_break2_start: 22:00
 shift2_break2_length: 10
 second_end: 00:30
-
-
-update
