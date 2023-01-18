@@ -64,7 +64,7 @@ def make_datetime_objects():
     break_times[1][2].append(datetime.now().replace(hour=int(variables_data[17].split(':')[0]),minute=int(variables_data[17].split(':')[1]))+timedelta(minutes=int(variables_data[18])))
     if shift_times[1][1].hour == 0:
         shift_times[1][1] += timedelta(days=1)
-    print(variables_data[20])
+    print(variables_data[20]+'datetime')
 
 make_datetime_objects()
 
@@ -183,7 +183,7 @@ class CounterDisplay:
         self.undobtn.grid(row=0,column=3,sticky='nwes')
         self.settingsbtn = tk.Button(self.frame_btm,text='Settings',font=fonts[2],fg=font_color[0],bg=bgcolors[1],borderwidth=0,highlightbackground=bgcolors[1],activebackground=bgcolors[2],activeforeground=font_color[0])
         self.settingsbtn.grid(row=0,column=4,sticky='nwes')
-        print(variables_data[20])
+        print(variables_data[20]+'counter')
         if variables_data[20] == 'True': # if the counter is update manually during a shift set the previous bend and shift count to the cached values
             self.bend_count['text'] = variables_data[1]
             self.shift_goal['text'] = variables_data[2]
