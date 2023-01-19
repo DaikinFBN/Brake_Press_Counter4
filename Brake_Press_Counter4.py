@@ -107,8 +107,8 @@ class CounterDisplay:
         self.win.bind('<g>',self.manual_goal_count)
         self.win.bind('<o>',self.open_settings)
 
-        self.win.geometry("1000x500")
-        # self.win.attributes('-fullscreen',True)
+        # self.win.geometry("1000x500")
+        self.win.attributes('-fullscreen',True)
         self.win.grid_columnconfigure(0,weight=1)
         self.win.grid_rowconfigure(0,weight=1)
         self.win.grid_rowconfigure(1,weight=10)
@@ -437,8 +437,8 @@ class CounterDisplay:
 class Settings:
     def __init__(self):
         self.win = tk.Toplevel(bg = bgcolors[0])
-        # self.win.geometry("1000x500")
-        self.win.attributes('-fullscreen',True)
+        self.win.geometry("1000x500")
+        # self.win.attributes('-fullscreen',True)
         
         # TODO uncomment
 
