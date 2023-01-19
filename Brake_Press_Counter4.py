@@ -437,8 +437,8 @@ class CounterDisplay:
 class Settings:
     def __init__(self):
         self.win = tk.Toplevel(bg = bgcolors[0])
-        self.win.geometry("1000x500")
-        # self.win.attributes('-fullscreen',True)
+        # self.win.geometry("1000x500")
+        self.win.attributes('-fullscreen',True)
         
         # TODO uncomment
 
