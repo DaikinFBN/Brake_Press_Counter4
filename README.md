@@ -9,7 +9,6 @@
 - [Configuration](#configuration)
 - [SD Card Imaging](#sd-card-imaging)
 - [Contributing](#contributing)
-- [License](#license)
 
 ## Overview
 The Brake Press Counter is a system designed to monitor and display the efficiency and count of a brake press machine in real-time. This system uses a Raspberry Pi for GPIO input handling and a Tkinter GUI for display purposes. The project includes settings management through a JSON file, making it flexible and easy to configure.
@@ -79,3 +78,23 @@ The Brake Press Counter is a system designed to monitor and display the efficien
 7. **Raspberry Pi Kiosk Mode Setup:**
    - The Raspberry Pi is set up to automatically start the application in kiosk mode. No additional setup is required for normal usage.
 
+## Configuration
+1. **Configuration Overview:**
+   - The brake press counter application allows you to configure shift times, break times, and various settings through the settings interface.
+2. **Accessing Settings:**
+   - To open the settings window, press `o` while the application is running.
+3. **Shift Times:**
+   - Configure the start and end times for each shift.
+   - If your operation includes multiple shifts, enable the second shift and set the corresponding times.
+4. **Break Times:**
+   - Set the start times and durations for breaks and lunch periods within each shift.
+5. **Saving Changes:**
+   - After making changes to the shift and break times, click the 'Save' button to apply the new settings.
+6. **Automatic Reset Times:**
+   - The bend count and shift goals will automatically reset at the configured times.
+7. **File Locations:**
+   - The configuration is stored in a JSON file located in the application directory (`/home/daikinfbn/Brake_Press_Counter4/settings.json`).
+8. **Manual Configuration:**
+   - If needed, you can manually edit the `settings.json` file to configure the application settings. Make sure the file is formatted correctly to avoid errors.
+9. **Configuration Parameters:**
+   - The `settings.json` file includes parameters such as `shift_times`, `break_times`, `count_pin`, `auto_reset_times`, and `epe_number`.
