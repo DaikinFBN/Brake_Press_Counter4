@@ -7,6 +7,7 @@
 - [Installation](#installation)
 - [Usage](#usage)
 - [Configuration](#configuration)
+- [SD Card Imaging](#sd-card-imaging)
 - [Contributing](#contributing)
 - [License](#license)
 
